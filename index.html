@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Coaching Manager</title>
+<link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#0f766e"><link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root{--bg:#eef2f6;--card:#fff;--tx:#17202e;--mu:#667085;--pr:#0f766e;--on:#fff;--am:#b45309;--bad:#c0392b;--bd:#dde3ea;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1419;--card:#18202a;--tx:#e8edf3;--mu:#97a3b3;--pr:#2dd4bf;--on:#07201d;--am:#fbbf24;--bad:#ff8a7a;--bd:#2a3542}}
+:root[data-theme="dark"]{--bg:#0f1419;--card:#18202a;--tx:#e8edf3;--mu:#97a3b3;--pr:#2dd4bf;--on:#07201d;--am:#fbbf24;--bad:#ff8a7a;--bd:#2a3542}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--pr);z-index:10}
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:var(--pr);color:var(--on);padding:12px 16px;font-size:18px;font-weight:700}
+main{padding:12px 12px 90px;max-width:640px;margin:0 auto}
+nav{position:fixed;left:0;right:0;bottom:0;z-index:9;display:flex;background:var(--card);border-top:1px solid var(--bd);padding-bottom:env(safe-area-inset-bottom,0px)}
+nav button{flex:1;border:0;background:none;color:var(--mu);padding:9px 0 7px;font:inherit;font-size:12px}
+nav button b{display:block;font-size:19px}
+nav button.on{color:var(--pr);font-weight:700}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;margin-bottom:10px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.grid .card{margin:0}.n{font-size:26px;font-weight:700}.mu{color:var(--mu);font-size:13px}
+.li{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--bd)}
+.li:last-child{border:0}
+.row{display:flex;gap:8px;margin:10px 0;flex-wrap:wrap}.row>*{flex:1}
+.b,.b2{border:0;border-radius:8px;padding:10px 14px;font:inherit;font-weight:600;text-align:center;text-decoration:none;background:var(--pr);color:var(--on);display:inline-block}
+.b2{background:none;border:1px solid var(--bd);color:var(--tx)}
+input,select,textarea{width:100%;font:inherit;padding:10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx)}
+label{display:block;margin:8px 0;font-size:13px;color:var(--mu)}label input,label select{margin-top:4px}
+.tag{font-size:12px;border-radius:99px;padding:2px 9px;background:var(--bg);color:var(--am);font-weight:700;white-space:nowrap}
+.tag.ok{color:var(--pr)}
+.t{width:42px;height:38px;border-radius:8px;border:1px solid var(--bd);background:none;color:var(--tx);font:inherit;font-weight:700;margin-left:6px}
+.t.p{background:var(--pr);color:var(--on);border-color:var(--pr)}.t.a{background:var(--bad);color:#fff;border-color:var(--bad)}
+#m{display:none;position:fixed;inset:0;background:#0008;z-index:20;align-items:flex-end}#m.on{display:flex}
+.sh{background:var(--card);width:100%;max-width:640px;margin:0 auto;max-height:88vh;overflow:auto;padding:16px 16px calc(16px + env(safe-area-inset-bottom,0px));border-radius:16px 16px 0 0}
+.sh h3{margin:0 0 6px}h4{margin:14px 0 2px}
+#toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:var(--tx);color:var(--bg);padding:9px 16px;border-radius:99px;z-index:30;display:none;font-size:14px}
+.empty{text-align:center;color:var(--mu);padding:28px 12px}
+</style></head><body>
+<header id="h">Coaching Manager</header>
+<main id="v"></main>
+<nav id="nav"></nav>
+<div id="m"></div><div id="toast"></div>
+<script>
+const API_URL='PASTE_YOUR_WEB_APP_URL_HERE',CONTACT='our WhatsApp number',TRIAL_DAYS=7;
+let acct=null;try{acct=JSON.parse(localStorage.getItem('cmAcct'))}catch(e){}
+const K='cm_'+(acct?acct.id:'x');let db;
+try{db=JSON.parse(localStorage.getItem(K))}catch(e){}
+db=db||{batches:[],students:[],att:{},pay:[],staff:[],tmpl:'Dear {name}, fee of ₹{due} for {batch} is pending. Kindly pay at the earliest. Thank you.'};
+let st='',tm,ready=false;
+const setSt=t=>{st=t;const e=document.querySelector('#st');if(e)e.textContent=t};
+const save=()=>{db.ts=Date.now();try{localStorage.setItem(K,JSON.stringify(db))}catch(e){}if(acct&&ready){clearTimeout(tm);tm=setTimeout(push,1500)}};
+const call=b=>fetch(API_URL,{method:'POST',body:JSON.stringify(b)}).then(r=>r.json());
+const au=()=>({id:acct.id,pin:acct.pin});
+const upd=i=>{if(!i)return;acct={...acct,...i};localStorage.setItem('cmAcct',JSON.stringify(acct))};
+const exp=()=>Math.max(acct.trialEnds||0,acct.paidUntil||0);
+const locked=()=>exp()&&Date.now()>exp();
+const left=()=>Math.max(0,Math.ceil((exp()-Date.now())/864e5));
+async function push(){setSt('Syncing…');try{const r=await call({action:'push',...au(),ts:db.ts,data:db});upd(r.info);if(r.error){setSt(r.error);if(r.error=='expired')render()}else setSt('Synced at '+new Date().toLocaleTimeString())}catch(e){setSt('Offline. Will sync when you are back online.')}}
+async function pull(){if(!acct)return;setSt('Checking…');try{const r=await call({action:'pull',...au()});upd(r.info);if(r.error){setSt(r.error=='expired'?'Trial ended':r.error);render();return}ready=true;if(r.data&&r.ts>(db.ts||0)){db=r.data;try{localStorage.setItem(K,JSON.stringify(db))}catch(e){}setSt('Loaded your latest data')}else await push();render()}catch(e){setSt('Offline. Using data on this device.')}}
+function logout(){localStorage.removeItem('cmAcct');location.reload()}
+const banner=()=>acct.paidUntil&&Date.now()<acct.paidUntil?`<div class=card>Active until ${new Date(acct.paidUntil).toLocaleDateString()}</div>`:`<div class=card style="border-color:var(--am)"><b>Free trial:</b> ${left()} day${left()==1?'':'s'} left. To keep using the app, contact ${CONTACT}.</div>`;
+function auth(m){m=m||'new';$('#nav').innerHTML='';$('#h').textContent='Coaching Manager';
+ $('#v').innerHTML=`<div class=card><h3 style="margin:0 0 4px">${m=='new'?'Start your free trial':'Log in'}</h3><p class=mu>${m=='new'?TRIAL_DAYS+' days with every feature. No card needed.':'Use your Coaching ID and password.'}</p>${m=='new'?'<label>Coaching name<input id=a_n></label><label>Mobile number<input id=a_p type=tel></label>':'<label>Coaching ID<input id=a_i autocapitalize=characters></label>'}<label>Password (6 or more characters)<input id=a_w type=password></label><div class=row><button class=b onclick="go('${m}')">${m=='new'?'Create my coaching':'Log in'}</button></div><p id=a_e style="color:var(--bad);min-height:20px"></p><button class=b2 style="width:100%" onclick="auth('${m=='new'?'in':'new'}')">${m=='new'?'I already have a Coaching ID':'Create a new coaching'}</button></div>`}
+async function go(m){const g=i=>($('#'+i)||{}).value||'',e=$('#a_e');e.textContent='Please wait…';
+ try{const r=await call(m=='new'?{action:'register',name:g('a_n'),phone:g('a_p'),pin:g('a_w')}:{action:'login',id:g('a_i').trim().toUpperCase(),pin:g('a_w')});
+ if(r.error){e.textContent=r.error;return}
+ localStorage.setItem('cmAcct',JSON.stringify({id:r.id,pin:g('a_w'),...r.info}));location.reload()}catch(x){e.textContent='Could not reach the server. Check your internet and try again.'}}
+function lock(){$('#nav').innerHTML='';$('#h').textContent='Trial ended';
+ $('#v').innerHTML=`<div class=card><h3 style="margin:0 0 6px">Your trial has ended</h3><p>Your data is safe. To keep using ${esc(acct.name)}, contact ${CONTACT} and share your Coaching ID: <b>${acct.id}</b>.</p><div class=row><button class=b onclick=pull()>I have paid, check again</button><button class=b2 onclick="txt('Backup text (copy and keep safe)',JSON.stringify(db))">Export my data</button></div><p class=mu id=st>${esc(st)}</p><button class=b2 style="width:100%" onclick=logout()>Log out</button></div>`}
+const $=s=>document.querySelector(s),uid=()=>Math.random().toString(36).slice(2,9);
+const today=()=>new Date().toISOString().slice(0,10),ym=()=>today().slice(0,7);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const bn=id=>(db.batches.find(b=>b.id==id)||{}).name||'No batch';
+const months=f=>{const a=new Date(f),n=new Date();return Math.max(1,(n.getFullYear()-a.getFullYear())*12+n.getMonth()-a.getMonth()+1)};
+const paid=id=>db.pay.filter(p=>p.sid==id).reduce((t,p)=>t+p.amt,0);
+const due=s=>Math.max(0,s.fee*months(s.join)-paid(s.id));
+const act=()=>db.students.filter(s=>s.active);
+const sms=s=>'sms:'+s.phone+'?body='+encodeURIComponent(db.tmpl.replace(/\{name\}/g,s.name).replace(/\{due\}/g,due(s)).replace(/\{batch\}/g,bn(s.batch)));
+let tab='home',ab='',ad=today(),q='';
+function toast(t){const e=$('#toast');e.textContent=t;e.style.display='block';setTimeout(()=>e.style.display='none',2200)}
+const cm=()=>{$('#m').className='';$('#m').innerHTML=''};
+function modal(title,fields,ok,extra){
+ $('#m').innerHTML=`<div class=sh><h3>${title}</h3>${fields.map(f=>`<label>${f.l}${f.o?`<select id=f_${f.k}>${f.o.map(o=>`<option value="${o[0]}"${o[0]==f.v?' selected':''}>${esc(o[1])}</option>`).join('')}</select>`:`<input id=f_${f.k} type="${f.t||'text'}" value="${esc(f.v??'')}">`}</label>`).join('')}${extra||''}<div class=row><button class=b2 onclick=cm()>${ok?'Cancel':'Close'}</button>${ok?'<button class=b onclick=sv()>Save</button>':''}</div></div>`;
+ $('#m').className='on';
+ window.sv=()=>{const o={};fields.forEach(f=>o[f.k]=$('#f_'+f.k).value);if(ok(o)!==false)cm()}}
+function txt(title,val,imp){modal(title,[],imp?()=>{try{const d=JSON.parse($('#ta').value);if(!d.students)throw 0;db=d;save();render();toast('Data restored')}catch(e){toast('That text is not a valid backup');return false}}:null,`<textarea id=ta rows=9 ${imp?'placeholder="Paste backup text here"':'readonly onfocus=this.select()'}>${esc(val)}</textarea>`)}
+
+function batchForm(id){const b=db.batches.find(x=>x.id==id)||{};
+ modal(id?'Edit batch':'Add batch',[{k:'name',l:'Batch name',v:b.name},{k:'time',l:'Timing (e.g. Mon–Fri 5–6 pm)',v:b.time},{k:'addr',l:'Address or room',v:b.addr}],o=>{if(!o.name.trim()){toast('Enter a batch name');return false}
+  if(id)Object.assign(b,o);else db.batches.push({id:uid(),...o});save();render()})}
+function stForm(id){const s=db.students.find(x=>x.id==id)||{};
+ if(!db.batches.length){toast('Add a batch first (More tab)');return}
+ modal(id?'Edit student':'Add student',[{k:'name',l:'Name',v:s.name},{k:'phone',l:'Mobile number',t:'tel',v:s.phone},{k:'batch',l:'Batch',o:db.batches.map(b=>[b.id,b.name]),v:s.batch},{k:'fee',l:'Monthly fee (₹)',t:'number',v:s.fee},{k:'join',l:'Joining date',t:'date',v:s.join||today()}],o=>{if(!o.name.trim()){toast('Enter the student’s name');return false}
+  o.fee=+o.fee||0;if(id)Object.assign(s,o);else db.students.push({id:uid(),active:1,...o});save();render()})}
+function pay(id){const s=db.students.find(x=>x.id==id);
+ modal('Collect fee · '+esc(s.name),[{k:'amt',l:'Amount (₹)',t:'number',v:due(s)||s.fee},{k:'date',l:'Date',t:'date',v:today()}],o=>{if(!(+o.amt>0)){toast('Enter an amount');return false}
+  db.pay.push({id:uid(),sid:id,amt:+o.amt,date:o.date});save();render();toast('Fee recorded')})}
+function sd(id){const s=db.students.find(x=>x.id==id),h=db.pay.filter(p=>p.sid==id).sort((a,b)=>b.date.localeCompare(a.date));
+ const d=Object.values(db.att).filter(v=>v[id]),pr=d.filter(v=>v[id]=='P').length;
+ modal(esc(s.name),[],null,`<p class=mu>${esc(bn(s.batch))} · ₹${s.fee} a month · Pending ₹${due(s)}<br>Present ${pr} of ${d.length} marked days</p><div class=row><a class=b href="tel:${esc(s.phone)}">Call</a><a class=b href="${sms(s)}">Send SMS</a><button class=b onclick="cm();pay('${id}')">Collect fee</button></div><div class=row><button class=b2 onclick="cm();stForm('${id}')">Edit</button><button class=b2 onclick="tog('${id}')">${s.active?'Discontinue':'Reactivate'}</button></div><h4>Payments</h4>${h.map(p=>`<div class=li><span>${p.date}</span><b>₹${p.amt}</b></div>`).join('')||'<p class=mu>No payments yet.</p>'}`)}
+function tog(id){const s=db.students.find(x=>x.id==id);s.active=s.active?0:1;save();cm();render()}
+function mark(id,v){const k=ad+'|'+ab;db.att[k]=db.att[k]||{};db.att[k][id]=db.att[k][id]==v?'':v;save();render()}
+function staffForm(id){const s=db.staff.find(x=>x.id==id)||{};
+ modal(id?'Edit staff':'Add staff',[{k:'name',l:'Name',v:s.name},{k:'phone',l:'Mobile number',t:'tel',v:s.phone},{k:'sal',l:'Monthly salary (₹)',t:'number',v:s.sal}],o=>{if(!o.name.trim()){toast('Enter a name');return false}
+  o.sal=+o.sal||0;if(id)Object.assign(s,o);else db.staff.push({id:uid(),paid:{},...o});save();render()})}
+function sal(id){const s=db.staff.find(x=>x.id==id);s.paid[ym()]=!s.paid[ym()];save();render()}
+function tmplForm(){modal('SMS reminder template',[{k:'t',l:'Use {name}, {due} and {batch}',v:db.tmpl}],o=>{db.tmpl=o.t;save();toast('Template saved')})}
+function csv(){const r=[['Name','Mobile','Batch','Monthly fee','Paid','Pending','Status']].concat(db.students.map(s=>[s.name,s.phone,bn(s.batch),s.fee,paid(s.id),due(s),s.active?'Active':'Discontinued']));
+ txt('Students as CSV (copy into Excel)',r.map(x=>x.map(c=>'"'+String(c??'').replace(/"/g,'""')+'"').join(',')).join('\n'))}
+
+const T=[['home','Home','⌂'],['stu','Students','☺'],['att','Attendance','✓'],['fee','Fees','₹'],['more','More','⋯']];
+const emptyMsg=(t,b)=>`<div class=empty>${t}${b||''}</div>`;
+function vHome(){const p=db.pay.filter(x=>x.date.startsWith(ym())).reduce((t,x)=>t+x.amt,0),pend=act().reduce((t,s)=>t+due(s),0),k=today()+'|',tp=Object.entries(db.att).filter(([a])=>a.startsWith(k)).reduce((t,[,v])=>t+Object.values(v).filter(x=>x=='P').length,0);
+ return banner()+`<div class=grid><div class=card><div class=n>${act().length}</div><div class=mu>Active students</div></div><div class=card><div class=n>${db.batches.length}</div><div class=mu>Batches</div></div><div class=card><div class=n>₹${p}</div><div class=mu>Collected this month</div></div><div class=card><div class=n>₹${pend}</div><div class=mu>Total pending</div></div></div><div class=card><b>${tp}</b> students marked present today</div>`+(db.batches.length?'':`<div class=card>Start here: add your first batch in <b>More</b>, then add students.</div>`)}
+function vStu(){const l=db.students.filter(s=>(s.name+s.phone).toLowerCase().includes(q.toLowerCase())).sort((a,b)=>b.active-a.active||a.name.localeCompare(b.name));
+ return `<div class=row><input placeholder="Search name or mobile" value="${esc(q)}" oninput="q=this.value;render(1)"><button class=b style="flex:0 0 auto" onclick="stForm()">Add</button></div><div class=card id=sl>${list(l)}</div>`}
+const list=l=>l.map(s=>`<div class=li onclick="sd('${s.id}')"><span>${esc(s.name)}<br><span class=mu>${esc(bn(s.batch))}${s.active?'':' · Discontinued'}</span></span>${s.active?(due(s)?`<span class=tag>₹${due(s)} due</span>`:'<span class="tag ok">Paid up</span>'):''}</div>`).join('')||emptyMsg('No students found.');
+function vAtt(){const bs=db.batches;if(!bs.length)return emptyMsg('Add a batch and students to mark attendance.');if(!ab||!bs.find(b=>b.id==ab))ab=bs[0].id;
+ const l=act().filter(s=>s.batch==ab),a=db.att[ad+'|'+ab]||{},pr=l.filter(s=>a[s.id]=='P').length;
+ return `<div class=row><select onchange="ab=this.value;render()">${bs.map(b=>`<option value="${b.id}"${b.id==ab?' selected':''}>${esc(b.name)}</option>`).join('')}</select><input type=date value="${ad}" onchange="ad=this.value;render()"></div><div class=card>${l.map(s=>`<div class=li><span>${esc(s.name)}</span><span><button class="t ${a[s.id]=='P'?'p':''}" onclick="mark('${s.id}','P')">P</button><button class="t ${a[s.id]=='A'?'a':''}" onclick="mark('${s.id}','A')">A</button></span></div>`).join('')||emptyMsg('No active students in this batch.')}</div><p class=mu>${pr} present · ${l.filter(s=>a[s.id]=='A').length} absent · ${l.length} total</p>`}
+function vFee(){const d=act().filter(s=>due(s)>0).sort((a,b)=>due(b)-due(a)),m=ym(),by={};
+ db.pay.filter(p=>p.date.startsWith(m)).forEach(p=>{const s=db.students.find(x=>x.id==p.sid);if(s)by[s.batch]=(by[s.batch]||0)+p.amt});
+ return `<div class=card><b>Collected this month by batch</b>${Object.keys(by).map(b=>`<div class=li><span>${esc(bn(b))}</span><b>₹${by[b]}</b></div>`).join('')||'<p class=mu>No fees collected yet this month.</p>'}</div><div class=row><button class=b2 onclick=tmplForm()>Edit SMS template</button></div><div class=card><b>Pending fees (${d.length})</b>${d.map(s=>`<div class=li><span>${esc(s.name)}<br><span class=mu>${esc(bn(s.batch))}</span></span><span><b>₹${due(s)}</b> <a class=b2 style="padding:6px 10px" href="${sms(s)}">Remind</a> <button class=b style="padding:7px 10px" onclick="pay('${s.id}')">Collect</button></span></div>`).join('')||'<p class=mu>Nobody has pending fees.</p>'}</div>`}
+function vMore(){const m=ym();
+ return `<div class=card><div class=li><b>Batches</b><button class=b style="padding:6px 12px" onclick=batchForm()>Add</button></div>${db.batches.map(b=>`<div class=li onclick="batchForm('${b.id}')"><span>${esc(b.name)}<br><span class=mu>${esc(b.time||'No timing set')}</span></span><span class=mu>${act().filter(s=>s.batch==b.id).length} students</span></div>`).join('')||'<p class=mu>No batches yet.</p>'}</div>
+ <div class=card><div class=li><b>Staff and salary (${m})</b><button class=b style="padding:6px 12px" onclick=staffForm()>Add</button></div>${db.staff.map(s=>`<div class=li><span onclick="staffForm('${s.id}')">${esc(s.name)}<br><span class=mu>₹${s.sal} a month</span></span><button class="${s.paid[m]?'b':'b2'}" style="padding:7px 10px" onclick="sal('${s.id}')">${s.paid[m]?'Paid':'Mark paid'}</button></div>`).join('')||'<p class=mu>No staff added.</p>'}</div>
+ <div class=card><b>${esc(acct.name)}</b><p class=mu>Coaching ID: <b>${acct.id}</b>. Use it with your password to log in on another phone.</p><p class=mu id=st>${esc(st||'Not synced yet')}</p><div class=row><button class=b onclick=pull()>Sync now</button><button class=b2 onclick=logout()>Log out</button></div></div>
+ <div class=card><b>Backup and export</b><p class=mu>Data lives in this browser. Copy a backup now and then.</p><div class=row><button class=b2 onclick="txt('Backup text (copy and keep safe)',JSON.stringify(db))">Export backup</button><button class=b2 onclick="txt('Restore from backup','',1)">Restore</button><button class=b2 onclick=csv()>Students CSV</button></div></div>`}
+function render(keep){if(!acct)return auth();if(locked())return lock();$('#nav').innerHTML=T.map(t=>`<button class="${t[0]==tab?'on':''}" onclick="tab='${t[0]}';render()"><b>${t[2]}</b>${t[1]}</button>`).join('');
+ $('#h').textContent=(T.find(t=>t[0]==tab)||[])[1]=='Home'?'Coaching Manager':T.find(t=>t[0]==tab)[1];
+ if(keep&&tab=='stu'){$('#sl').innerHTML=list(db.students.filter(s=>(s.name+s.phone).toLowerCase().includes(q.toLowerCase())));return}
+ $('#v').innerHTML={home:vHome,stu:vStu,att:vAtt,fee:vFee,more:vMore}[tab]()}
+render();pull();addEventListener('online',pull);if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script></body></html>
